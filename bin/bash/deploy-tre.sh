@@ -5,14 +5,18 @@ set -e
 # Execute script from project root dir
 
 usage() {
-  echo "Usage: $0 -r <region> [-e <service-catalog-endpoint>] [-s <service-catalog-ssl-verification>]"
+  echo "Usage: $0 -r <region> [-e <service-catalog-endpoint>] [-s <service-catalog-ssl-verification>] [-v <vpc-id>] [-1 <subnet1-id>] [-2 <subnet2-id>] [-3 <subnet3-id>]"
   echo "-r AWS region is required."
   echo "-e sets the endpoint for calls to Service Catalog. If not present, uses the default endpoint for the region."
   echo "-s sets SSL verification for calls to Service Catalog. Allowed values are true|false. Default is true."
+  echo "-v sets existing VPC ID to use instead of creating new VPC."
+  echo "-1 sets existing private subnet 1 ID (required if using existing VPC)."
+  echo "-2 sets existing private subnet 2 ID (optional)."
+  echo "-3 sets existing private subnet 3 ID (optional)."
   exit 1; 
 }
 
-while getopts ":r:e:s:" opt
+while getopts ":r:e:s:v:1:2:3:" opt
 do
   case "$opt" in
     r)
@@ -24,6 +28,18 @@ do
     s)
       [[ $OPTARG == "true" || $OPTARG == "false" ]] || usage
       OVERRIDE_SERVICE_CATALOG_VERIFY_SSL="ParameterKey=ServiceCatalogVerifySsl,ParameterValue=$OPTARG"
+    ;;
+    v)
+      EXISTING_VPC_ID="ParameterKey=ExistingVpcId,ParameterValue=$OPTARG"
+    ;;
+    1)
+      EXISTING_SUBNET1_ID="ParameterKey=ExistingPrivateSubnet1Id,ParameterValue=$OPTARG"
+    ;;
+    2)
+      EXISTING_SUBNET2_ID="ParameterKey=ExistingPrivateSubnet2Id,ParameterValue=$OPTARG"
+    ;;
+    3)
+      EXISTING_SUBNET3_ID="ParameterKey=ExistingPrivateSubnet3Id,ParameterValue=$OPTARG"
     ;;
     *)
       usage
@@ -102,10 +118,10 @@ else
 fi
 
 # Set up parameter overrides for sam deploy, if any are needed
-SERVICE_CATALOG_PARAMETER_OVERRIDES="$OVERRIDE_SERVICE_CATALOG_ENDPOINT $OVERRIDE_SERVICE_CATALOG_VERIFY_SSL"
-if [[ $SERVICE_CATALOG_PARAMETER_OVERRIDES =~ [A-Za-z] ]]
+ALL_PARAMETER_OVERRIDES="$OVERRIDE_SERVICE_CATALOG_ENDPOINT $OVERRIDE_SERVICE_CATALOG_VERIFY_SSL $EXISTING_VPC_ID $EXISTING_SUBNET1_ID $EXISTING_SUBNET2_ID $EXISTING_SUBNET3_ID"
+if [[ $ALL_PARAMETER_OVERRIDES =~ [A-Za-z] ]]
 then
-  SAM_DEPLOY_PARAMETER_OVERRIDES="--parameter-overrides $SERVICE_CATALOG_PARAMETER_OVERRIDES"
+  SAM_DEPLOY_PARAMETER_OVERRIDES="--parameter-overrides $ALL_PARAMETER_OVERRIDES"
 else
   unset SAM_DEPLOY_PARAMETER_OVERRIDES
 fi
